@@ -79,7 +79,12 @@ def get_unked_bigram_perplexity(bigram_prob, unigram_prob, val_tokens):
         if current_bigram in bigram_prob:
             log_sum += np.log2(bigram_prob[current_bigram])
         else:
-            log_sum += np.log2(bigram_prob[("<unk>", "<unk>")])
+            if (val_tokens[i-1], "<unk>") in bigram_prob:
+                log_sum += np.log2(bigram_prob[(val_tokens[i-1], "<unk>")])
+            elif ("<unk>", val_tokens[i]) in bigram_prob:
+                log_sum += np.log2(bigram_prob[("<unk>", val_tokens[i])])
+            else:
+                log_sum += np.log2(bigram_prob[("<unk>", "<unk>")])
     perplexity = np.power(2, -log_sum/N)
     return perplexity
 
