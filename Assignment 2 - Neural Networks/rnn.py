@@ -1,12 +1,7 @@
-import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn import init
 import torch.optim as optim
-import math
 import random
-import os
-import time
 from tqdm import tqdm
 import json
 import string
@@ -31,11 +26,11 @@ class RNN(nn.Module):
 
     def forward(self, inputs):
         # [to fill] obtain hidden layer representation (https://pytorch.org/docs/stable/generated/torch.nn.RNN.html)
-        _, hidden = 
+        output, hidden = nn.RNN(inputs)
         # [to fill] obtain output layer representations
-
+        output = self.W(output)
         # [to fill] sum over output 
-
+        predicted_vector = self.softmax(output.sum(dim=0))
         # [to fill] obtain probability dist.
 
         return predicted_vector
