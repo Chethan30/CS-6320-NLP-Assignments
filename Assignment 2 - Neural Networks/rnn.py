@@ -12,10 +12,10 @@ unk = '<UNK>'
 # Consult the PyTorch documentation for information on the functions used below:
 # https://pytorch.org/docs/stable/torch.html
 class RNN(nn.Module):
-    def __init__(self, input_dim, h):  # Add relevant parameters
+    def __init__(self, input_dim, h, l):  # Add relevant parameters
         super(RNN, self).__init__()
         self.h = h
-        self.numOfLayer = 1
+        self.numOfLayer = l
         self.rnn = nn.RNN(input_dim, h, self.numOfLayer, nonlinearity='tanh')
         self.W = nn.Linear(h, 5)
         self.softmax = nn.LogSoftmax(dim=1)
@@ -26,8 +26,9 @@ class RNN(nn.Module):
 
     def forward(self, inputs):
         # [to fill] obtain hidden layer representation (https://pytorch.org/docs/stable/generated/torch.nn.RNN.html)
-        output, hidden = nn.RNN(inputs)
+        output, hidden = self.rnn(inputs)
         # [to fill] obtain output layer representations
+        # output = nn.Linear(self.h, self.h-2)(output)
         output = self.W(output)
         # [to fill] sum over output 
         predicted_vector = self.softmax(output.sum(dim=0))
@@ -36,33 +37,41 @@ class RNN(nn.Module):
         return predicted_vector
 
 
-def load_data(train_data, val_data):
+def load_data(train_data, val_data, test_data):
     with open(train_data) as training_f:
         training = json.load(training_f)
     with open(val_data) as valid_f:
         validation = json.load(valid_f)
+    # if test_data:
+    #     with open(test_data) as test_f:
+    #         test = json.load(test_f)
+    
 
     tra = []
     val = []
+    tst = []
     for elt in training:
         tra.append((elt["text"].split(),int(elt["stars"]-1)))
     for elt in validation:
         val.append((elt["text"].split(),int(elt["stars"]-1)))
-    return tra, val
+    # for elt in test:
+    #     tst.append((elt["text"].split(),int(elt["stars"]-1)))
+    return tra, val, tst
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-hd", "--hidden_dim", type=int, required = True, help = "hidden_dim")
-    parser.add_argument("-e", "--epochs", type=int, required = True, help = "num of epochs to train")
-    parser.add_argument("--train_data", required = True, help = "path to training data")
-    parser.add_argument("--val_data", required = True, help = "path to validation data")
-    parser.add_argument("--test_data", default = "to fill", help = "path to test data")
+    parser.add_argument("-e", "--epochs", type=int, help = "num of epochs to train")
+    parser.add_argument("-trd", "--train_data", required = True, help = "path to training data")
+    parser.add_argument("-vd", "--val_data", required = True, help = "path to validation data")
+    parser.add_argument("-l", "--layer", type=int, default = 1, help = "number of layers")
+    parser.add_argument("-tsd", "--test_data", default = "to fill", help = "path to test data")
     parser.add_argument('--do_train', action='store_true')
     args = parser.parse_args()
 
     print("========== Loading data ==========")
-    train_data, valid_data = load_data(args.train_data, args.val_data) # X_data is a list of pairs (document, y); y in {0,1,2,3,4}
+    train_data, valid_data, test_data = load_data(args.train_data, args.val_data, args.test_data) # X_data is a list of pairs (document, y); y in {0,1,2,3,4}
 
     # Think about the type of function that an RNN describes. To apply it, you will need to convert the text data into vector representations.
     # Further, think about where the vectors will come from. There are 3 reasonable choices:
@@ -72,7 +81,7 @@ if __name__ == "__main__":
     # Option 3 will be the most time consuming, so we do not recommend starting with this
 
     print("========== Vectorizing data ==========")
-    model = RNN(50, args.hidden_dim)  # Fill in parameters
+    model = RNN(50, args.hidden_dim, args.layer)  # Fill in parameters
     # optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     word_embedding = pickle.load(open('./word_embedding.pkl', 'rb'))
@@ -82,6 +91,7 @@ if __name__ == "__main__":
 
     last_train_accuracy = 0
     last_validation_accuracy = 0
+    last_test_accuracy = 0
 
     while not stopping_condition:
         random.shuffle(train_data)
@@ -132,7 +142,7 @@ if __name__ == "__main__":
             loss_count += 1
             loss.backward()
             optimizer.step()
-        print(loss_total/loss_count)
+        print("Training loss for epoch {} = {}".format((epoch+1),loss_total/loss_count))
         print("Training completed for epoch {}".format(epoch + 1))
         print("Training accuracy for epoch {}: {}".format(epoch + 1, correct / total))
         trainning_accuracy = correct/total
@@ -168,6 +178,9 @@ if __name__ == "__main__":
         else:
             last_validation_accuracy = validation_accuracy
             last_train_accuracy = trainning_accuracy
+            print("Training Accuracy of epoch {} = {}".format(epoch + 1, trainning_accuracy))
+            print("Validation Accuracy of epoch {} = {}".format(epoch + 1, validation_accuracy))
+            print("\n")
 
         epoch += 1
 
